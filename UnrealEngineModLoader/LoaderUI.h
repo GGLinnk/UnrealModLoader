@@ -13,6 +13,8 @@
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "D3dcompiler.lib")
 
+#define IMGUI_USER_CONFIG "ImGuiConfig.h"
+
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 class LOADER_API LoaderUI
 {
