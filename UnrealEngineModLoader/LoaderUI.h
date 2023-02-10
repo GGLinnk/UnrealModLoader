@@ -47,6 +47,7 @@ public:
 	ComPtr<ID3D12CommandQueue> p12CommandQueue = NULL;
 	ComPtr<ID3D12CommandAllocator> p12CommandAllocator = NULL;
 	ComPtr<ID3D12GraphicsCommandList> p12CommandList = NULL;
+	ComPtr<IDXGIOutput> p12Output = NULL;
 	ComPtr<ID3D12DescriptorHeap> p12DescriptorHeap = NULL;
 	ComPtr<IDXGISwapChain3> p12SwapChain = NULL;
 

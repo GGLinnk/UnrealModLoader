@@ -543,9 +543,9 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 		//
 	}
 
-	p12CommandAllocator->Reset();
+	LoaderUI::GetUI()->p12CommandAllocator->Reset();
 
-	if (FAILED(LoaderUI::GetUI()->p12Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, p12CommandAllocator.Get(), NULL, IID_PPV_ARGS(&LoaderUI::GetUI()->p12CommandList))))
+	if (FAILED(LoaderUI::GetUI()->p12Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, LoaderUI::GetUI()->p12CommandAllocator.Get(), NULL, IID_PPV_ARGS(&LoaderUI::GetUI()->p12CommandList))))
 	{
 		//
 	}
@@ -666,7 +666,7 @@ HRESULT __stdcall hookD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	// LoaderUI initializes D3D objects, mods can then use those objects for drawing, hardware access, etc.
 	LoaderUI* UI = LoaderUI::GetUI();
 	UI->LoaderD3D12Present(pSwapChain, SyncInterval, Flags);
-	Global::GetGlobals()->eventSystem.dispatchEvent("DX12Present", UI->pDevice, UI->pContext, UI->pRenderTargetView);
+	Global::GetGlobals()->eventSystem.dispatchEvent("DX12Present", UI->p12Device, UI->p12CommandList, UI->pRenderTarget);
 	return D3D12Present(pSwapChain, SyncInterval, Flags);
 }
 
@@ -781,24 +781,37 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 
 	D3D_FEATURE_LEVEL requestedLevels[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1 };
 
-	DXGI_SWAP_CHAIN_DESC scd;
+	DXGI_SWAP_CHAIN_DESC1 scd;
 	ZeroMemory(&scd, sizeof(scd));
-	scd.BufferCount = 1;
-	scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	scd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-	scd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-	scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-
-	scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-	scd.OutputWindow = hWnd;
+	scd.Width = 1;
+	scd.Height = 1;
+	scd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	scd.SampleDesc.Count = 1;
+	scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	scd.BufferCount = 1;
+	scd.Scaling = DXGI_SCALING_ASPECT_RATIO_STRETCH;
 	scd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-	scd.Windowed = ((GetWindowLongPtr(hWnd, GWL_STYLE) & WS_POPUP) != 0) ? false : true;
+	scd.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+	scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
-	scd.BufferDesc.Width = 1;
-	scd.BufferDesc.Height = 1;
-	scd.BufferDesc.RefreshRate.Numerator = 0;
-	scd.BufferDesc.RefreshRate.Denominator = 1;
+	DXGI_SWAP_CHAIN_DESC scd1;
+	ZeroMemory(&scd1, sizeof(scd1));
+	scd1.BufferCount = 1;
+	scd1.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	scd1.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+	scd1.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+	scd1.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+
+	scd1.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	scd1.OutputWindow = hWnd;
+	scd1.SampleDesc.Count = 1;
+	scd1.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+	scd1.Windowed = ((GetWindowLongPtr(hWnd, GWL_STYLE) & WS_POPUP) != 0) ? false : true;
+
+	scd1.BufferDesc.Width = 1;
+	scd1.BufferDesc.Height = 1;
+	scd1.BufferDesc.RefreshRate.Numerator = 0;
+	scd1.BufferDesc.RefreshRate.Denominator = 1;
 
 	UINT createFlags = 0;
 #ifdef _DEBUG
@@ -826,22 +839,46 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 	}
 
 	D3D12_COMMAND_QUEUE_DESC commandQueueDesc = {};
-	commandQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-	commandQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+	ZeroMemory(&commandQueueDesc, sizeof(commandQueueDesc));
 
 	if (FAILED(LoaderUI::GetUI()->p12Device->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&LoaderUI::GetUI()->p12CommandQueue))))
 	{
 		Log::Error("Failed to create command queue");
 	}
 
-	ID3D12CommandQueue* queue;
-
-	HRESULT resSwap = LoaderUI::GetUI()->p12DXGIFactory->CreateSwapChain(LoaderUI::GetUI()->p12CommandQueue.Get(), &scd, &pSwapChain);
-
-	if (FAILED(resSwap))
+	switch (LoaderUI::GetUI()->p12DXGIFactory->CreateSwapChain(LoaderUI::GetUI()->p12CommandQueue.Get(), &scd1, &pSwapChain))
 	{
-		Log::Error("Failed to create swapchain");
+	case S_OK:
+		Log::Info("Konar");
+		break;
+	case E_OUTOFMEMORY:
+		Log::Error("Oh non oute offe mémorieuh");
+		break;
+	case DXGI_ERROR_INVALID_CALL:
+		Log::Print("%p", &LoaderUI::GetUI()->p12CommandQueue);
+		Log::Print("%p", &pSwapChain);
+		Log::Error("ALLO?!");
+		break;
+	default:
+		Log::Error("Tamère");
+		break;
 	}
+
+	/*switch (LoaderUI::GetUI()->p12DXGIFactory->CreateSwapChainForHwnd(LoaderUI::GetUI()->p12CommandQueue.Get(), hWnd, &scd, nullptr, nullptr, &pSwapChain))
+	{
+	case S_OK:
+		Log::Info("Konar");
+		break;
+	case E_OUTOFMEMORY:
+		Log::Error("Oh non oute offe mémorieuh");
+		break;
+	case DXGI_ERROR_INVALID_CALL:
+		Log::Error("ALLO?!");
+		break;
+	default:
+		Log::Error("Tamère");
+		break;
+	}*/
 
 	LoaderUI::GetUI()->pSwapChainVtable = (DWORD_PTR*)pSwapChain;
 	LoaderUI::GetUI()->pSwapChainVtable = (DWORD_PTR*)LoaderUI::GetUI()->pSwapChainVtable[0];
