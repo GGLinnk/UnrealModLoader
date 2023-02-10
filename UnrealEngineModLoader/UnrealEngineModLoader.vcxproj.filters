@@ -77,6 +77,9 @@
       <Filter>ImGui</Filter>
     </ClCompile>
     <ClCompile Include="UnrealEngineModLoader\Utilities\Logger.cpp" />
+    <ClCompile Include="..\..\Downloads\UnrealModLoader-main\UnrealModLoader-main\UnrealEngineModLoader\ImGui\imgui_impl_dx12.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="UnrealEngineModLoader\Utilities\Globals.h">
@@ -141,12 +144,12 @@
     <ClInclude Include="ImGui\imgui_impl_dx11.h">
       <Filter>ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="ImGui\imgui_impl_dx12.h">
-      <Filter>ImGui</Filter>
-    </ClInclude>
     <ClInclude Include="UnrealEngineModLoader\Utilities\Version.h">
       <Filter>UnrealModLoader\Utilities</Filter>
     </ClInclude>
     <ClInclude Include="UMLDefs.h" />
+    <ClInclude Include="..\..\Downloads\UnrealModLoader-main\UnrealModLoader-main\UnrealEngineModLoader\ImGui\imgui_impl_dx12.h">
+      <Filter>ImGui</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

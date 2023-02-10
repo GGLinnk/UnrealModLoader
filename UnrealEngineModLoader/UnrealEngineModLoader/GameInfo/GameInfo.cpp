@@ -55,11 +55,11 @@ void SetupProfile(std::string Path)
 		AllocConsole();
 		freopen("CON", "w", LOG_STREAM);
 		Log::Info("Created by ~Russell.J Release V %sa", MODLOADER_VERSION);
-		Log::Info("Modified by DmgVol, GGLinnk");
+		Log::Dmg("Modified by DmgVol");
 	}
 
 	if (LoaderInfo.getAs<int>("DEBUG", "DX12", 0) == 1) {
-		Log::Info("[DMG] DX12 Version (No-ImGUI)");
+		Log::Dmg("DX12 Version");
 		DmgConfig::Instance.isDX12 = true;
 	}
 
@@ -337,10 +337,10 @@ void SetupProfile(std::string Path)
 				else
 				{
 					if (!DmgConfig::Instance.SkipCallFunctionByNameWithArguments) {
-						Log::Error("[DMG] CallFunctionByNameWithArguments NOT FOUND!");
+						Log::Error("CallFunctionByNameWithArguments NOT FOUND!");
 					}
 					else {
-						Log::Info("[DMG] CallFunctionByNameWithArguments SKIPPED!");
+						Log::Dmg("CallFunctionByNameWithArguments SKIPPED!");
 					}
 
 				}
