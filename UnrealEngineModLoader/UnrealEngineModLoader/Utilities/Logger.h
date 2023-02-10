@@ -16,8 +16,7 @@ private:
 		INFO_MSG = 0,
 		WARNING_MSG = 1,
 		ERROR_MSG = 2,
-		INFO_PRINTCONSOLE = 3,
-		DMG = 4
+		INFO_PRINTCONSOLE = 3
 	};
 
 	template <typename ...Args>
@@ -48,10 +47,6 @@ private:
 		case INFO_PRINTCONSOLE:
 			SetConsoleTextAttribute(hConsole, 13);
 			fprintf(LOG_STREAM, "PRINT");
-			break;
-		case DMG:
-			SetConsoleTextAttribute(hConsole, 11);
-			fprintf(LOG_STREAM, "DMG");
 			break;
 		}
 
@@ -88,12 +83,6 @@ public:
 	static void Print(const std::string& format, Args&& ...args)
 	{
 		LogMsg(INFO_PRINTCONSOLE, format, std::forward<Args>(args)...);
-	}
-
-	template <typename ...Args>
-	static void Dmg(const std::string& format, Args&& ...args)
-	{
-		LogMsg(DMG, format, std::forward<Args>(args)...);
 	}
 
 	static void SetupErrorMessage(std::string Message) 
