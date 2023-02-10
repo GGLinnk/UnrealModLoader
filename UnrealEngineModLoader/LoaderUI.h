@@ -8,9 +8,11 @@
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_internal.h"
 #include "ImGui/imgui_impl_dx11.h"
+#include "ImGui/imgui_impl_dx12.h"
 #include "ImGui/imgui_impl_win32.h"
 
 #pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "D3dcompiler.lib")
 
 #define IMGUI_USER_CONFIG "ImGuiConfig.h"
