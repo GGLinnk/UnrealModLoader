@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\Downloads\UnrealModLoader-main\UnrealModLoader-main\UnrealEngineModLoader\ImGui\imgui_impl_dx12.cpp" />
     <ClCompile Include="Hooks.cpp" />
     <ClCompile Include="ImGui\imgui.cpp" />
     <ClCompile Include="ImGui\imgui_demo.cpp" />
@@ -42,6 +43,7 @@
     <ClCompile Include="UnrealEngineModLoader\Utilities\Logger.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Downloads\UnrealModLoader-main\UnrealModLoader-main\UnrealEngineModLoader\ImGui\imgui_impl_dx12.h" />
     <ClInclude Include="EventSystem.h" />
     <ClInclude Include="Hooks.h" />
     <ClInclude Include="ImGui\imconfig.h" />

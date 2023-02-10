@@ -440,11 +440,11 @@ void LoaderUI::LoaderD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
-void LoaderUI::LoaderD3D12Present(IDXGISwapChain4* pSwapChain, UINT SyncInterval, UINT Flags)
+void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags)
 {
 	if (LoaderUI::GetUI()->initRendering)
 	{
-		if (SUCCEEDED(pSwapChain->GetDevice(__uuidof(ID3D12Device5), (void**)&LoaderUI::GetUI()->p12Device)) &&
+		if (SUCCEEDED(pSwapChain->GetDevice(__uuidof(ID3D12Device), (void**)&LoaderUI::GetUI()->p12Device)) &&
 			SUCCEEDED(pSwapChain->GetDevice(__uuidof(LoaderUI::GetUI()->p12Device), (void**)&LoaderUI::GetUI()->p12Device)))
 		{
 			Log::Info("D3D12Device Initialized");
@@ -661,8 +661,8 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	return D3D11Present(pSwapChain, SyncInterval, Flags);
 }
 
-HRESULT(*D3D12Present)(IDXGISwapChain4* pSwapChain, UINT SyncInterval, UINT Flags);
-HRESULT __stdcall hookD3D12Present(IDXGISwapChain4* pSwapChain, UINT SyncInterval, UINT Flags)
+HRESULT(*D3D12Present)(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
+HRESULT __stdcall hookD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags)
 {
 	// LoaderUI initializes D3D objects, mods can then use those objects for drawing, hardware access, etc.
 	LoaderUI* UI = LoaderUI::GetUI();
@@ -773,14 +773,14 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 	} while (!hDXGIDLL);
 	Sleep(100);
 
-	IDXGISwapChain4* pSwapChain{};
+	IDXGISwapChain* pSwapChain{};
 
 	WNDCLASSEXA wc = { sizeof(WNDCLASSEX), CS_CLASSDC, DefWindowProc, 0L, 0L, GetModuleHandleA(NULL), NULL, NULL, NULL, NULL, "DX", NULL };
 	RegisterClassExA(&wc);
 
 	HWND hWnd = CreateWindowA("DX", NULL, WS_OVERLAPPEDWINDOW, 100, 100, 300, 300, NULL, NULL, wc.hInstance, NULL);
 
-	D3D_FEATURE_LEVEL requestedLevels[] = { D3D_FEATURE_LEVEL_11_0 };
+	D3D_FEATURE_LEVEL requestedLevels[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1 };
 	ID3D12Device* d3dDevice = nullptr;
 
 	DXGI_SWAP_CHAIN_DESC scd;
@@ -807,7 +807,10 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 	createFlags |= D3D12_CREATE_DEVICE_DEBUG;
 #endif
 
-	IDXGISwapChain* d3dSwapChain = 0;
+	if (FAILED(CreateDXGIFactory(IID_PPV_ARGS(&LoaderUI::GetUI()->p12DXGIFactory))))
+	{
+		Log::Error("Failed to create DXGI factory");
+	}
 
 	HRESULT result = D3D12CreateDevice(
 		nullptr,
@@ -819,28 +822,13 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 		Log::Error("Failed to create D3D12 device, error code: 0x%X", result);
 	}
 
-	
-	if (FAILED(CreateDXGIFactory(IID_PPV_ARGS(&LoaderUI::GetUI()->p12DXGIFactory))))
-	{
-		Log::Error("Failed to create DXGI factory");
-	}
-
-	IDXGISwapChain1* pDXGISwapChain;
-	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-	swapChainDesc.BufferCount = 2;
-	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	swapChainDesc.SampleDesc.Count = 1;
-
-	HRESULT resSwap = LoaderUI::GetUI()->p12DXGIFactory->CreateSwapChainForHwnd(
-		reinterpret_cast<IUnknown*>(LoaderUI::GetUI()->p12Device), hWnd, &swapChainDesc, nullptr, nullptr, &pDXGISwapChain);
+	HRESULT resSwap = LoaderUI::GetUI()->p12DXGIFactory->CreateSwapChain(
+		reinterpret_cast<IUnknown*>(LoaderUI::GetUI()->p12Device), &scd, &pSwapChain);
 
 	if (FAILED(resSwap))
 	{
-		Log::Error("Failed to create swapchain", resSwap);
+		Log::Error("Failed to create swapchain");
 	}
-
 
 	LoaderUI::GetUI()->pSwapChainVtable = (DWORD_PTR*)pSwapChain;
 	LoaderUI::GetUI()->pSwapChainVtable = (DWORD_PTR*)LoaderUI::GetUI()->pSwapChainVtable[0];
@@ -858,6 +846,7 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 		Sleep(10);
 	}
 
+	LoaderUI::GetUI()->p12DXGIFactory->Release();
 	LoaderUI::GetUI()->p12Device->Release();
 	pSwapChain->Release();
 	return NULL;

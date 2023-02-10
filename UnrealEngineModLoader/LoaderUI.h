@@ -29,16 +29,16 @@ class LoaderUI
 {
 public:
 	typedef HRESULT(__stdcall* D3D11PresentHook) (IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
-	typedef HRESULT(__stdcall* D3D12PresentHook) (IDXGISwapChain4* pSwapChain, UINT SyncInterval, UINT Flags);
+	typedef HRESULT(__stdcall* D3D12PresentHook) (IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
 	D3D11PresentHook phookD3D11Present = NULL;
 	D3D12PresentHook phookD3D12Present = NULL;
 
 	DWORD_PTR* pSwapChainVtable = NULL;
 	ID3D11Device* pDevice = NULL;
-	ID3D12Device5* p12Device = NULL;
+	ID3D12Device* p12Device = NULL;
 	ID3D11DeviceContext* pContext = NULL;
 
-	IDXGIFactory4* p12DXGIFactory;
+	IDXGIFactory* p12DXGIFactory;
 
 	ID3D12CommandQueue* p12CommandQueue = NULL;
 	ID3D12CommandAllocator* p12CommandAllocator = NULL;
@@ -64,7 +64,7 @@ public:
 
 	void LoaderD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
 
-	void LoaderD3D12Present(IDXGISwapChain4* pSwapChain, UINT SyncInterval, UINT Flags);
+	void LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
 
 	static LRESULT CALLBACK hookWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
