@@ -1,4 +1,3 @@
-#include "LoaderUI.h"
 #include "Utilities/Logger.h"
 #include "Memory/mem.h"
 #include "Utilities/Dumper.h"
@@ -462,7 +461,7 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 
 		if (hr == S_OK)
 		{
-			LoaderUI::GetUI()->p12Device->CreateRenderTargetView(LoaderUI::GetUI()->pRenderTarget, &renderTargetViewDesc, LoaderUI::GetUI()->renderTargetDescriptorHandle);
+			LoaderUI::GetUI()->p12Device->CreateRenderTargetView(LoaderUI::GetUI()->pRenderTarget.Get(), &renderTargetViewDesc, LoaderUI::GetUI()->renderTargetDescriptorHandle);
 			if (GetLastError() == 0)
 			{
 				pRenderTarget->Release();
@@ -516,8 +515,8 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 		D3D12_GPU_DESCRIPTOR_HANDLE fontSrvGpuDescHandle = LoaderUI::GetUI()->p12DescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 		fontSrvGpuDescHandle.ptr += LoaderUI::GetUI()->p12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 1;
 
-		if (!ImGui_ImplDX12_Init(LoaderUI::GetUI()->p12Device, NUM_FRAMES_IN_FLIGHT,
-			DXGI_FORMAT_R8G8B8A8_UNORM, LoaderUI::GetUI()->p12DescriptorHeap,
+		if (!ImGui_ImplDX12_Init(LoaderUI::GetUI()->p12Device.Get(), NUM_FRAMES_IN_FLIGHT,
+			DXGI_FORMAT_R8G8B8A8_UNORM, LoaderUI::GetUI()->p12DescriptorHeap.Get(),
 			fontSrvCpuDescHandle, fontSrvGpuDescHandle))
 		{
 			Log::Error("Failed to impl ImGui with DirectX12");
@@ -546,14 +545,14 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 
 	p12CommandAllocator->Reset();
 
-	if (FAILED(LoaderUI::GetUI()->p12Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, p12CommandAllocator, NULL, IID_PPV_ARGS(&LoaderUI::GetUI()->p12CommandList))))
+	if (FAILED(LoaderUI::GetUI()->p12Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, p12CommandAllocator.Get(), NULL, IID_PPV_ARGS(&LoaderUI::GetUI()->p12CommandList))))
 	{
 		//
 	}
 
 	LoaderUI::GetUI()->p12CommandList->Close();
 
-	ID3D12CommandList* ppCommandLists[] = { LoaderUI::GetUI()->p12CommandList };
+	ID3D12CommandList* ppCommandLists[] = { LoaderUI::GetUI()->p12CommandList.Get() };
 	p12CommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
 	HRESULT hr = LoaderUI::GetUI()->p12Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&LoaderUI::GetUI()->p12Fence));
@@ -564,7 +563,7 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 	UINT64 fenceValue = 0;
 	HANDLE fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 
-	p12CommandQueue->Signal(LoaderUI::GetUI()->p12Fence, fenceValue);
+	p12CommandQueue->Signal(LoaderUI::GetUI()->p12Fence.Get(), fenceValue);
 	LoaderUI::GetUI()->p12Fence->SetEventOnCompletion(fenceValue, fenceEvent);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE renderTargetDescriptorHandle = LoaderUI::GetUI()->renderTargetDescriptorHandle;
@@ -648,7 +647,7 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 	}
 
 	ImGui::Render();
-	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), LoaderUI::GetUI()->p12CommandList);
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), LoaderUI::GetUI()->p12CommandList.Get());
 }
 
 HRESULT(*D3D11Present)(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
@@ -781,7 +780,6 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 	HWND hWnd = CreateWindowA("DX", NULL, WS_OVERLAPPEDWINDOW, 100, 100, 300, 300, NULL, NULL, wc.hInstance, NULL);
 
 	D3D_FEATURE_LEVEL requestedLevels[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1 };
-	ID3D12Device* d3dDevice = nullptr;
 
 	DXGI_SWAP_CHAIN_DESC scd;
 	ZeroMemory(&scd, sizeof(scd));
@@ -807,13 +805,18 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 	createFlags |= D3D12_CREATE_DEVICE_DEBUG;
 #endif
 
-	if (FAILED(CreateDXGIFactory(IID_PPV_ARGS(&LoaderUI::GetUI()->p12DXGIFactory))))
+	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&LoaderUI::GetUI()->p12DXGIFactory))))
 	{
 		Log::Error("Failed to create DXGI factory");
 	}
 
+	if (FAILED(LoaderUI::GetUI()->p12DXGIFactory->EnumWarpAdapter(IID_PPV_ARGS(&LoaderUI::GetUI()->p12DXGIAdapter))))
+	{
+		Log::Error("Failed to create DXGI adapter");
+	}
+
 	HRESULT result = D3D12CreateDevice(
-		nullptr,
+		LoaderUI::GetUI()->p12DXGIAdapter.Get(),
 		D3D_FEATURE_LEVEL_11_0,
 		IID_PPV_ARGS(&LoaderUI::GetUI()->p12Device));
 
@@ -822,8 +825,18 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 		Log::Error("Failed to create D3D12 device, error code: 0x%X", result);
 	}
 
-	HRESULT resSwap = LoaderUI::GetUI()->p12DXGIFactory->CreateSwapChain(
-		reinterpret_cast<IUnknown*>(LoaderUI::GetUI()->p12Device), &scd, &pSwapChain);
+	D3D12_COMMAND_QUEUE_DESC commandQueueDesc = {};
+	commandQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	commandQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+
+	if (FAILED(LoaderUI::GetUI()->p12Device->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&LoaderUI::GetUI()->p12CommandQueue))))
+	{
+		Log::Error("Failed to create command queue");
+	}
+
+	ID3D12CommandQueue* queue;
+
+	HRESULT resSwap = LoaderUI::GetUI()->p12DXGIFactory->CreateSwapChain(LoaderUI::GetUI()->p12CommandQueue.Get(), &scd, &pSwapChain);
 
 	if (FAILED(resSwap))
 	{
@@ -847,6 +860,8 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 	}
 
 	LoaderUI::GetUI()->p12DXGIFactory->Release();
+	LoaderUI::GetUI()->p12CommandQueue->Release();
+	LoaderUI::GetUI()->p12DXGIAdapter->Release();
 	LoaderUI::GetUI()->p12Device->Release();
 	pSwapChain->Release();
 	return NULL;

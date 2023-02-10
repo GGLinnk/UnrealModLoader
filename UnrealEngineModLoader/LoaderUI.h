@@ -1,5 +1,6 @@
 #pragma once
 #include <Windows.h>
+#include <wrl.h>
 #include <inttypes.h>
 #include <string>
 #include <d3d11.h>
@@ -22,10 +23,12 @@
 
 #define IMGUI_USER_CONFIG "ImGuiConfig.h"
 
+using namespace Microsoft::WRL;
+
 const int NUM_FRAMES_IN_FLIGHT = 3;
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-class LoaderUI
+class LOADER_API LoaderUI
 {
 public:
 	typedef HRESULT(__stdcall* D3D11PresentHook) (IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
@@ -35,21 +38,23 @@ public:
 
 	DWORD_PTR* pSwapChainVtable = NULL;
 	ID3D11Device* pDevice = NULL;
-	ID3D12Device* p12Device = NULL;
+	ComPtr<ID3D12Device> p12Device = NULL;
 	ID3D11DeviceContext* pContext = NULL;
 
-	IDXGIFactory* p12DXGIFactory;
+	ComPtr<IDXGIFactory4> p12DXGIFactory;
+	ComPtr<IDXGIAdapter> p12DXGIAdapter;
 
-	ID3D12CommandQueue* p12CommandQueue = NULL;
-	ID3D12CommandAllocator* p12CommandAllocator = NULL;
-	ID3D12GraphicsCommandList* p12CommandList = NULL;
-	ID3D12DescriptorHeap* p12DescriptorHeap = NULL;
+	ComPtr<ID3D12CommandQueue> p12CommandQueue = NULL;
+	ComPtr<ID3D12CommandAllocator> p12CommandAllocator = NULL;
+	ComPtr<ID3D12GraphicsCommandList> p12CommandList = NULL;
+	ComPtr<ID3D12DescriptorHeap> p12DescriptorHeap = NULL;
+	ComPtr<IDXGISwapChain3> p12SwapChain = NULL;
 
-	ID3D12Fence* p12Fence = NULL;
+	ComPtr<ID3D12Fence> p12Fence = NULL;
 
 	ID3D11RenderTargetView* pRenderTargetView = NULL;
 	D3D12_CPU_DESCRIPTOR_HANDLE renderTargetDescriptorHandle;
-	ID3D12Resource1* pRenderTarget;
+	ComPtr<ID3D12Resource1> pRenderTarget;
 
 	WNDPROC hGameWindowProc = NULL;
 
