@@ -34,10 +34,13 @@ struct FrameContext
 	UINT64                  FenceValue;
 };
 
+static int const NUM_BACK_BUFFERS = 2;
+static int const NUM_FRAME_RESOURCES = 3;
+
 class LOADER_API LoaderUI
 {
 public:
-	typedef HRESULT(__stdcall* D3D12PresentHook) (IDXGISwapChain1* pSwapChain, UINT SyncInterval, UINT Flags);
+	typedef HRESULT(__stdcall* D3D12PresentHook) (IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT Flags);
 	D3D12PresentHook phookD3D12Present = NULL;
 
 	DWORD_PTR* pSwapChainVtable = NULL;
@@ -51,7 +54,7 @@ public:
 	ComPtr<ID3D12GraphicsCommandList> p12CommandList = NULL;
 	ComPtr<IDXGIOutput> p12Output = NULL;
 
-	FrameContext p12frameContext;
+	FrameContext p12frameContext[NUM_FRAME_RESOURCES] = {};
 	HANDLE p12hSwapChainWaitableObject = NULL;
 	HANDLE p12fenceEvent = NULL;
 	UINT64 p12fenceLastSignaledValue = 0;
@@ -61,10 +64,10 @@ public:
 	ComPtr<ID3D12DescriptorHeap> p12DescriptorHeapSrv = NULL;
 
 	ComPtr<IDXGISwapChain3> pSwapChain;
-	D3D12_CPU_DESCRIPTOR_HANDLE p12RenderTargetDescriptor;
+	D3D12_CPU_DESCRIPTOR_HANDLE p12RenderTargetDescriptor[NUM_BACK_BUFFERS] = {};
 
 	ComPtr<ID3D12Fence> p12Fence = NULL;
-	ComPtr<ID3D12Resource> pRenderTarget;
+	ComPtr<ID3D12Resource> pRenderTarget[NUM_BACK_BUFFERS] = {};
 
 	WNDPROC hGameWindowProc = NULL;
 
@@ -72,11 +75,11 @@ public:
 	float screenCenterX = 0;
 	float screenCenterY = 0;
 
-	HRESULT(*ResizeBuffers)(IDXGISwapChain1*, UINT, UINT, UINT, DXGI_FORMAT, UINT) = NULL;
+	HRESULT(*ResizeBuffers)(IDXGISwapChain3*, UINT, UINT, UINT, DXGI_FORMAT, UINT) = NULL;
 
-	HRESULT LoaderResizeBuffers(IDXGISwapChain1* pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags);
+	HRESULT LoaderResizeBuffers(IDXGISwapChain3* pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags);
 
-	void LoaderD3D12Present(IDXGISwapChain1* pSwapChain, UINT SyncInterval, UINT Flags);
+	void LoaderD3D12Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT Flags);
 
 	static LRESULT CALLBACK hookWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 

@@ -101,7 +101,7 @@ void UILogicTick()
 	}
 }
 
-HRESULT LoaderUI::LoaderResizeBuffers(IDXGISwapChain1* pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
+HRESULT LoaderUI::LoaderResizeBuffers(IDXGISwapChain3* pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
 {
 	if (!LoaderUI::GetUI()->initRendering)
 	{
@@ -117,10 +117,13 @@ HRESULT LoaderUI::LoaderResizeBuffers(IDXGISwapChain1* pSwapChain, UINT BufferCo
 			pSwapChain->GetBuffer(1, IID_PPV_ARGS(&pBackBuffer));
 			if (hr == S_OK)
 			{
-				LoaderUI::GetUI()->p12Device->CreateRenderTargetView(pBackBuffer, NULL, LoaderUI::GetUI()->p12RenderTargetDescriptor);
-				LoaderUI::GetUI()->pRenderTarget = pBackBuffer;
+				for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
+				{
+					LoaderUI::GetUI()->p12Device->CreateRenderTargetView(pBackBuffer, NULL, LoaderUI::GetUI()->p12RenderTargetDescriptor[i]);
+					LoaderUI::GetUI()->pRenderTarget[i] = pBackBuffer;
+					LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor[i], false, 0);
+				}
 				pBackBuffer->Release();
-				LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor, false, 0);
 				Log::Info("D3D12RenderTargetView Initialized");
 
 				D3D12_VIEWPORT vp;
@@ -282,6 +285,9 @@ void DrawImGui()
 
 LRESULT CALLBACK LoaderUI::hookWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam))
+		return true;
+
 	CallWindowProc(ImGui_ImplWin32_WndProcHandler, hWnd, uMsg, wParam, lParam);
 
 	ImGuiIO& io = ImGui::GetIO();
@@ -291,12 +297,12 @@ LRESULT CALLBACK LoaderUI::hookWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 	return CallWindowProc(LoaderUI::GetUI()->hGameWindowProc, hWnd, uMsg, wParam, lParam);
 }
 
-HRESULT hookResizeBuffers(IDXGISwapChain1* pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
+HRESULT hookResizeBuffers(IDXGISwapChain3* pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
 {
 	return LoaderUI::GetUI()->LoaderResizeBuffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 }
 
-void LoaderUI::LoaderD3D12Present(IDXGISwapChain1* pSwapChain, UINT SyncInterval, UINT Flags)
+void LoaderUI::LoaderD3D12Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT Flags)
 {
 	if (LoaderUI::GetUI()->initRendering)
 	{
@@ -313,9 +319,11 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain1* pSwapChain, UINT SyncInterval
 		HRESULT hr = pSwapChain->GetBuffer(1, IID_PPV_ARGS(&pBackBuffer));
 		if (hr == S_OK)
 		{
-			LoaderUI::GetUI()->p12Device->CreateRenderTargetView(pBackBuffer, NULL, LoaderUI::GetUI()->p12RenderTargetDescriptor);
-			LoaderUI::GetUI()->pRenderTarget = pBackBuffer;
-
+			for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
+			{
+				LoaderUI::GetUI()->p12Device->CreateRenderTargetView(pBackBuffer, NULL, LoaderUI::GetUI()->p12RenderTargetDescriptor[i]);
+				LoaderUI::GetUI()->pRenderTarget[i] = pBackBuffer;
+			}
 			pBackBuffer->Release();
 			Log::Info("D3D12RenderTargetView Initialized");
 		}
@@ -324,48 +332,32 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain1* pSwapChain, UINT SyncInterval
 			Log::Error("Failed to initialize D3D12RenderTargetView");
 		}
 
+		ImGui::CreateContext();
+		ImGuiIO& io = ImGui::GetIO(); (void)io;
+		ImGui::StyleColorsDark();
+		io.ConfigFlags = ImGuiConfigFlags_NoMouseCursorChange;
+		HWND hGameWindow = MEM::FindWindow(GetCurrentProcessId(), L"UnrealWindow");
+		LoaderUI::GetUI()->hGameWindowProc = (WNDPROC)SetWindowLongPtr(hGameWindow, GWLP_WNDPROC, (LONG_PTR)LoaderUI::hookWndProc);
+		ImGui_ImplWin32_Init(hGameWindow);
+		ImGui_ImplDX12_Init(LoaderUI::GetUI()->p12Device.Get(), NUM_FRAME_RESOURCES, DXGI_FORMAT_R8G8B8A8_UNORM,
+			LoaderUI::GetUI()->p12DescriptorHeapSrv.Get(),
+			LoaderUI::GetUI()->p12DescriptorHeapSrv->GetCPUDescriptorHandleForHeapStart(),
+			LoaderUI::GetUI()->p12DescriptorHeapSrv->GetGPUDescriptorHandleForHeapStart());
+
 	}
 
-	ImGui::CreateContext();
-
-	ImGuiIO& io = ImGui::GetIO(); (void)io;
-	ImGui::StyleColorsDark();
-	io.ConfigFlags = ImGuiConfigFlags_NoMouseCursorChange;
-
-	HWND hGameWindow = MEM::FindWindow(GetCurrentProcessId(), L"UnrealWindow");
-	LoaderUI::GetUI()->hGameWindowProc = (WNDPROC)SetWindowLongPtr(hGameWindow, GWLP_WNDPROC, (LONG_PTR)LoaderUI::hookWndProc);
-	ImGui_ImplWin32_Init(hGameWindow);
-
-	ImGui_ImplDX12_Init(LoaderUI::GetUI()->p12Device.Get(), 3, DXGI_FORMAT_R8G8B8A8_UNORM,
-		LoaderUI::GetUI()->p12DescriptorHeapSrv.Get(),
-		LoaderUI::GetUI()->p12DescriptorHeapSrv->GetCPUDescriptorHandleForHeapStart(),
-		LoaderUI::GetUI()->p12DescriptorHeapSrv->GetGPUDescriptorHandleForHeapStart());
+	for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
+	{
+		LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor[i], false, 0);
+	}
 
 	// ImGui Rendering ---------------------------------------------
-
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 	ImGui::GetIO().MouseDrawCursor = Global::GetGlobals()->bIsMenuOpen;
 
-	ImGui::Render();
-
-	FrameContext* frameCtx = WaitForNextFrameResources();
-	UINT backBufferIdx = LoaderUI::GetUI()->pSwapChain->GetCurrentBackBufferIndex();
-	frameCtx->CommandAllocator->Reset();
-
-	D3D12_RESOURCE_BARRIER barrier = {};
-	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	barrier.Transition.pResource = LoaderUI::GetUI()->pRenderTarget.Get();
-	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	LoaderUI::GetUI()->p12CommandList->Reset(frameCtx->CommandAllocator, NULL);
-	LoaderUI::GetUI()->p12CommandList->ResourceBarrier(1, &barrier);
-
 	// Render Dear ImGui graphics
-
 	if (Global::GetGlobals()->bIsMenuOpen)
 	{
 		ImGuiStyle* style = &ImGui::GetStyle();
@@ -434,7 +426,23 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain1* pSwapChain, UINT SyncInterval
 		Global::GetGlobals()->eventSystem.dispatchEvent("DrawImGui");
 	}
 
-	LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor, FALSE, NULL);
+	ImGui::Render();
+
+	FrameContext* frameCtx = WaitForNextFrameResources();
+	UINT backBufferIdx = LoaderUI::GetUI()->pSwapChain->GetCurrentBackBufferIndex();
+	frameCtx->CommandAllocator->Reset();
+
+	D3D12_RESOURCE_BARRIER barrier = {};
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barrier.Transition.pResource = LoaderUI::GetUI()->pRenderTarget[backBufferIdx].Get();
+	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	LoaderUI::GetUI()->p12CommandList->Reset(frameCtx->CommandAllocator, NULL);
+	LoaderUI::GetUI()->p12CommandList->ResourceBarrier(1, &barrier);
+
+	LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor[backBufferIdx], FALSE, NULL);
 	LoaderUI::GetUI()->p12CommandList->SetDescriptorHeaps(1, &LoaderUI::GetUI()->p12DescriptorHeapSrv);
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), LoaderUI::GetUI()->p12CommandList.Get());
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
@@ -444,21 +452,21 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain1* pSwapChain, UINT SyncInterval
 
 	LoaderUI::GetUI()->p12CommandQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)LoaderUI::GetUI()->p12CommandList.Get());
 
-	LoaderUI::GetUI()->pSwapChain->Present(0, 0);
-
-	UINT64 fenceValue = LoaderUI::GetUI()->p12fenceLastSignaledValue;
+	UINT64 fenceValue = LoaderUI::GetUI()->p12fenceLastSignaledValue + 1;
 	LoaderUI::GetUI()->p12CommandQueue->Signal(LoaderUI::GetUI()->p12Fence.Get(), fenceValue);
-	LoaderUI::GetUI()->p12fenceLastSignaledValue++;
+	LoaderUI::GetUI()->p12fenceLastSignaledValue = fenceValue;
 	frameCtx->FenceValue = fenceValue;
+
+	LoaderUI::GetUI()->pSwapChain->Present(1, 0);
 }
 
-HRESULT(*D3D12Present)(IDXGISwapChain1* pSwapChain, UINT SyncInterval, UINT Flags);
-HRESULT __stdcall hookD3D12Present(IDXGISwapChain1* pSwapChain, UINT SyncInterval, UINT Flags)
+HRESULT(*D3D12Present)(IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT Flags);
+HRESULT __stdcall hookD3D12Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT Flags)
 {
 	// LoaderUI initializes D3D objects, mods can then use those objects for drawing, hardware access, etc.
 	LoaderUI* UI = LoaderUI::GetUI();
 	UI->LoaderD3D12Present(pSwapChain, SyncInterval, Flags);
-	Global::GetGlobals()->eventSystem.dispatchEvent("DX12Present", UI->p12Device, UI->p12CommandList, UI->pRenderTarget);
+	Global::GetGlobals()->eventSystem.dispatchEvent("DX12Present", UI->p12Device, UI->p12CommandList, UI->p12RenderTargetDescriptor);
 	return D3D12Present(pSwapChain, SyncInterval, Flags);
 }
 
@@ -474,10 +482,10 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 	} while (!hDXGIDLL);
 	Sleep(100);
 
-	WNDCLASSEXA wc = { sizeof(WNDCLASSEX), CS_CLASSDC, DefWindowProc, 0L, 0L, GetModuleHandleA(NULL), NULL, NULL, NULL, NULL, "DX", NULL };
-	RegisterClassExA(&wc);
+	WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, DefWindowProc, 0L, 0L, GetModuleHandleA(NULL), NULL, NULL, NULL, NULL, L"DX", NULL };
+	::RegisterClassExW(&wc);
 
-	HWND hWnd = CreateWindowA("DX", NULL, WS_OVERLAPPEDWINDOW, 100, 100, 300, 300, NULL, NULL, wc.hInstance, NULL);
+	HWND hWnd = ::CreateWindowW(L"DX", NULL, WS_OVERLAPPEDWINDOW, 100, 100, 300, 300, NULL, NULL, wc.hInstance, NULL);
 
 	D3D_FEATURE_LEVEL requestedLevels[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1 };
 
@@ -485,7 +493,7 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 	DXGI_SWAP_CHAIN_DESC1 sdc;
 	{
 		ZeroMemory(&sdc, sizeof(sdc));
-		sdc.BufferCount = 1;
+		sdc.BufferCount = NUM_BACK_BUFFERS;
 		sdc.Width = 0;
 		sdc.Height = 0;
 		sdc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -516,7 +524,7 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		desc.NumDescriptors = 1;
+		desc.NumDescriptors = NUM_BACK_BUFFERS;
 		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		desc.NodeMask = 1;
 
@@ -525,12 +533,20 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 			Log::Error("Failed to create descriptor heap");
 			return 0;
 		}
+
+		SIZE_T rtvDescriptorSize = LoaderUI::GetUI()->p12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = LoaderUI::GetUI()->p12DescriptorHeapRtv->GetCPUDescriptorHandleForHeapStart();
+		for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
+		{
+			LoaderUI::GetUI()->p12RenderTargetDescriptor[i] = rtvHandle;
+			rtvHandle.ptr += rtvDescriptorSize;
+		}
 	}
 
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		desc.NumDescriptors = 1;
+		desc.NumDescriptors = NUM_BACK_BUFFERS;
 		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		if (LoaderUI::GetUI()->p12Device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&LoaderUI::GetUI()->p12DescriptorHeapSrv)) != S_OK)
 		{
@@ -550,13 +566,17 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 			return 0;
 		}
 	}
-	if (LoaderUI::GetUI()->p12Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&LoaderUI::GetUI()->p12frameContext.CommandAllocator)) != S_OK)
-	{
-		Log::Error("Failed to create command allocator");
-		return 0;
-	}
 
-	if (LoaderUI::GetUI()->p12Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, LoaderUI::GetUI()->p12frameContext.CommandAllocator, NULL, IID_PPV_ARGS(&LoaderUI::GetUI()->p12CommandList)) != S_OK ||
+	for (UINT i = 0; i < NUM_FRAME_RESOURCES; i++)
+	{
+		if (LoaderUI::GetUI()->p12Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&LoaderUI::GetUI()->p12frameContext[i].CommandAllocator)) != S_OK)
+		{
+			Log::Error("Failed to create command allocator");
+			return 0;
+		}
+	}
+	
+	if (LoaderUI::GetUI()->p12Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, LoaderUI::GetUI()->p12frameContext[0].CommandAllocator, NULL, IID_PPV_ARGS(&LoaderUI::GetUI()->p12CommandList)) != S_OK ||
 		LoaderUI::GetUI()->p12CommandList->Close() != S_OK)
 	{
 		Log::Error("Failed to create command list");
@@ -631,10 +651,13 @@ void LoaderUI::CleanupDeviceD3D()
 	CleanupRenderTarget();
 	if (LoaderUI::GetUI()->pSwapChain) { LoaderUI::GetUI()->pSwapChain->SetFullscreenState(false, nullptr); LoaderUI::GetUI()->pSwapChain->Release(); LoaderUI::GetUI()->pSwapChain = nullptr; }
 	if (LoaderUI::GetUI()->p12hSwapChainWaitableObject != nullptr) { CloseHandle(LoaderUI::GetUI()->p12hSwapChainWaitableObject); }
-	if (LoaderUI::GetUI()->p12frameContext.CommandAllocator)
+	for (UINT i = 0; i < NUM_FRAME_RESOURCES; i++)
 	{
-		LoaderUI::GetUI()->p12frameContext.CommandAllocator->Release();
-		LoaderUI::GetUI()->p12frameContext.CommandAllocator = nullptr;
+		if (LoaderUI::GetUI()->p12frameContext[i].CommandAllocator)
+		{
+			LoaderUI::GetUI()->p12frameContext[i].CommandAllocator->Release();
+			LoaderUI::GetUI()->p12frameContext[i].CommandAllocator = nullptr;
+		}
 	}
 	if (LoaderUI::GetUI()->p12CommandQueue) { LoaderUI::GetUI()->p12CommandQueue->Release(); LoaderUI::GetUI()->p12CommandQueue = nullptr; }
 	if (LoaderUI::GetUI()->p12CommandList) { LoaderUI::GetUI()->p12CommandList->Release(); LoaderUI::GetUI()->p12CommandList = nullptr; }
@@ -658,17 +681,17 @@ void LoaderUI::CleanupRenderTarget()
 {
 	WaitForLastSubmittedFrame();
 
-	for (UINT i = 0; i < 1; i++)
+	for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
 		if (LoaderUI::GetUI()->pRenderTarget)
 		{
-			LoaderUI::GetUI()->pRenderTarget->Release();
-			LoaderUI::GetUI()->pRenderTarget = nullptr;
+			LoaderUI::GetUI()->pRenderTarget[i]->Release();
+			LoaderUI::GetUI()->pRenderTarget[i] = nullptr;
 		}
 }
 
 void LoaderUI::WaitForLastSubmittedFrame()
 {
-	FrameContext* frameCtx = &LoaderUI::GetUI()->p12frameContext;
+	FrameContext* frameCtx = &LoaderUI::GetUI()->p12frameContext[LoaderUI::GetUI()->p12frameIndex % NUM_FRAME_RESOURCES];
 
 	UINT64 fenceValue = frameCtx->FenceValue;
 	if (fenceValue == 0)
@@ -690,7 +713,7 @@ FrameContext* LoaderUI::WaitForNextFrameResources()
 	HANDLE waitableObjects[] = { LoaderUI::GetUI()->p12hSwapChainWaitableObject, NULL };
 	DWORD numWaitableObjects = 1;
 
-	FrameContext* frameCtx = &LoaderUI::GetUI()->p12frameContext;
+	FrameContext* frameCtx = &LoaderUI::GetUI()->p12frameContext[LoaderUI::GetUI()->p12frameIndex % NUM_FRAME_RESOURCES];
 	UINT64 fenceValue = frameCtx->FenceValue;
 	if (fenceValue != 0) // means no fence was signaled
 	{
