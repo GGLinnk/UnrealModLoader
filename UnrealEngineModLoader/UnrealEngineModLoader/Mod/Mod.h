@@ -37,7 +37,7 @@ public:
 	//PostBeginPlay of EVERY Blueprint ModActor
 	virtual void PostBeginPlay(std::wstring ModActorName, UE4::AActor* Actor);
 
-	//DX11 hook for when an image will be presented to the screen
+	//DX12 hook for when an image will be presented to the screen
 	virtual void DX12Present(ID3D12Device* pDevice, ID3D12CommandList* pContext, ID3D12Resource* pRenderTargetView);
 
 	virtual void OnModMenuButtonPressed();

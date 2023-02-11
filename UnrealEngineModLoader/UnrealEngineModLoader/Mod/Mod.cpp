@@ -62,7 +62,7 @@ void Mod::SetupHooks()
 	Global::GetGlobals()->eventSystem.registerEvent(new Event<>("InitGameState", &CallBackHandler::CallBackInitGameState));
 	Global::GetGlobals()->eventSystem.registerEvent(new Event<std::wstring, UE4::AActor*>("PostBeginPlay", &CallBackHandler::CallBackPostBeginPlay));
 	Global::GetGlobals()->eventSystem.registerEvent(new Event<>("DrawImGui", &CallBackHandler::CallBackDrawImGui));
-	Global::GetGlobals()->eventSystem.registerEvent(new Event<ID3D12Device*, ID3D12CommandList*, ID3D12Resource*>("DX11Present", &CallBackHandler::CallBackDX12Present));
+	Global::GetGlobals()->eventSystem.registerEvent(new Event<ID3D12Device*, ID3D12CommandList*, ID3D12Resource*>("DX12Present", &CallBackHandler::CallBackDX12Present));
 }
 
 void Mod::CompleteModCreation()

@@ -70,9 +70,6 @@
     <ClCompile Include="ImGui\imgui_draw.cpp">
       <Filter>ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="ImGui\imgui_impl_dx11.cpp">
-      <Filter>ImGui</Filter>
-    </ClCompile>
     <ClCompile Include="ImGui\imgui_impl_win32.cpp">
       <Filter>ImGui</Filter>
     </ClCompile>
@@ -139,9 +136,6 @@
       <Filter>ImGui</Filter>
     </ClInclude>
     <ClInclude Include="ImGui\imgui.h">
-      <Filter>ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="ImGui\imgui_impl_dx11.h">
       <Filter>ImGui</Filter>
     </ClInclude>
     <ClInclude Include="UnrealEngineModLoader\Utilities\Version.h">
