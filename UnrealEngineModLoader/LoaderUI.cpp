@@ -323,6 +323,7 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval
 			{
 				LoaderUI::GetUI()->p12Device->CreateRenderTargetView(pBackBuffer, NULL, LoaderUI::GetUI()->p12RenderTargetDescriptor[i]);
 				LoaderUI::GetUI()->pRenderTarget[i] = pBackBuffer;
+				LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor[i], false, 0);
 			}
 			pBackBuffer->Release();
 			Log::Info("D3D12RenderTargetView Initialized");
@@ -344,11 +345,6 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval
 			LoaderUI::GetUI()->p12DescriptorHeapSrv->GetCPUDescriptorHandleForHeapStart(),
 			LoaderUI::GetUI()->p12DescriptorHeapSrv->GetGPUDescriptorHandleForHeapStart());
 
-	}
-
-	for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
-	{
-		LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor[i], false, 0);
 	}
 
 	// ImGui Rendering ---------------------------------------------
@@ -426,7 +422,7 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval
 		Global::GetGlobals()->eventSystem.dispatchEvent("DrawImGui");
 	}
 
-	ImGui::Render();
+	ImGui::EndFrame();
 
 	FrameContext* frameCtx = WaitForNextFrameResources();
 	UINT backBufferIdx = LoaderUI::GetUI()->pSwapChain->GetCurrentBackBufferIndex();
@@ -444,20 +440,20 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval
 
 	LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor[backBufferIdx], FALSE, NULL);
 	LoaderUI::GetUI()->p12CommandList->SetDescriptorHeaps(1, &LoaderUI::GetUI()->p12DescriptorHeapSrv);
+
+	ImGui::Render();
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), LoaderUI::GetUI()->p12CommandList.Get());
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	LoaderUI::GetUI()->p12CommandList->ResourceBarrier(1, &barrier);
 	LoaderUI::GetUI()->p12CommandList->Close();
 
-	LoaderUI::GetUI()->p12CommandQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)LoaderUI::GetUI()->p12CommandList.Get());
+	LoaderUI::GetUI()->p12CommandQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList* const*>(LoaderUI::GetUI()->p12CommandList.Get()));
 
 	UINT64 fenceValue = LoaderUI::GetUI()->p12fenceLastSignaledValue + 1;
 	LoaderUI::GetUI()->p12CommandQueue->Signal(LoaderUI::GetUI()->p12Fence.Get(), fenceValue);
 	LoaderUI::GetUI()->p12fenceLastSignaledValue = fenceValue;
 	frameCtx->FenceValue = fenceValue;
-
-	LoaderUI::GetUI()->pSwapChain->Present(1, 0);
 }
 
 HRESULT(*D3D12Present)(IDXGISwapChain3* pSwapChain, UINT SyncInterval, UINT Flags);
