@@ -26,9 +26,9 @@ namespace CallBackHandler
 		Mod::ModRef->PostBeginPlay(ModActorName, Actor);
 	}
 
-	void CallBackDX11Present(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, ID3D11RenderTargetView* pRenderTargetView)
+	void CallBackDX12Present(ID3D12Device* pDevice, ID3D12CommandList* pContext, ID3D12Resource* pRenderTargetView)
 	{
-		Mod::ModRef->DX11Present(pDevice, pContext, pRenderTargetView);
+		Mod::ModRef->DX12Present(pDevice, pContext, pRenderTargetView);
 	}
 }
 
@@ -48,7 +48,7 @@ void Mod::PostBeginPlay(std::wstring ModActorName, UE4::AActor* Actor)
 {
 }
 
-void Mod::DX11Present(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, ID3D11RenderTargetView* pRenderTargetView)
+void Mod::DX12Present(ID3D12Device* pDevice, ID3D12CommandList* pContext, ID3D12Resource* pRenderTargetView)
 {
 }
 
@@ -62,7 +62,7 @@ void Mod::SetupHooks()
 	Global::GetGlobals()->eventSystem.registerEvent(new Event<>("InitGameState", &CallBackHandler::CallBackInitGameState));
 	Global::GetGlobals()->eventSystem.registerEvent(new Event<std::wstring, UE4::AActor*>("PostBeginPlay", &CallBackHandler::CallBackPostBeginPlay));
 	Global::GetGlobals()->eventSystem.registerEvent(new Event<>("DrawImGui", &CallBackHandler::CallBackDrawImGui));
-	Global::GetGlobals()->eventSystem.registerEvent(new Event<ID3D11Device*, ID3D11DeviceContext*, ID3D11RenderTargetView*>("DX11Present", &CallBackHandler::CallBackDX11Present));
+	Global::GetGlobals()->eventSystem.registerEvent(new Event<ID3D12Device*, ID3D12CommandList*, ID3D12Resource*>("DX11Present", &CallBackHandler::CallBackDX12Present));
 }
 
 void Mod::CompleteModCreation()

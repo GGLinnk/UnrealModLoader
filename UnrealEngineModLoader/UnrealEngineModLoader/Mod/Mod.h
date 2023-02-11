@@ -38,7 +38,7 @@ public:
 	virtual void PostBeginPlay(std::wstring ModActorName, UE4::AActor* Actor);
 
 	//DX11 hook for when an image will be presented to the screen
-	virtual void DX11Present(ID3D11Device* pDevice, ID3D11DeviceContext* pContext, ID3D11RenderTargetView* pRenderTargetView);
+	virtual void DX12Present(ID3D12Device* pDevice, ID3D12CommandList* pContext, ID3D12Resource* pRenderTargetView);
 
 	virtual void OnModMenuButtonPressed();
 

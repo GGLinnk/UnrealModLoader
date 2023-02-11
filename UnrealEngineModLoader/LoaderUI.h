@@ -37,7 +37,7 @@ struct FrameContext
 class LOADER_API LoaderUI
 {
 public:
-	typedef HRESULT(__stdcall* D3D12PresentHook) (IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
+	typedef HRESULT(__stdcall* D3D12PresentHook) (IDXGISwapChain1* pSwapChain, UINT SyncInterval, UINT Flags);
 	D3D12PresentHook phookD3D12Present = NULL;
 
 	DWORD_PTR* pSwapChainVtable = NULL;
