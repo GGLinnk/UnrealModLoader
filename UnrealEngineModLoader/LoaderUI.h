@@ -73,12 +73,11 @@ public:
 	ComPtr<ID3D12DescriptorHeap> p12DescriptorHeapSrv = NULL;
 
 	ComPtr<IDXGISwapChain3> pSwapChain{};
-	D3D12_CPU_DESCRIPTOR_HANDLE p12RenderTargetDescriptor[3] = {};
+	D3D12_CPU_DESCRIPTOR_HANDLE p12RenderTargetDescriptor[1] = {};
 
 	ComPtr<ID3D12Fence> p12Fence = NULL;
 
 	ID3D11RenderTargetView* pRenderTargetView = NULL;
-	D3D12_CPU_DESCRIPTOR_HANDLE renderTargetDescriptorHandle;
 	ComPtr<ID3D12Resource> pRenderTarget[3] = {};
 
 	WNDPROC hGameWindowProc = NULL;

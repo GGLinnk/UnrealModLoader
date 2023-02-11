@@ -129,6 +129,32 @@ HRESULT LoaderUI::LoaderResizeBuffers(IDXGISwapChain* pSwapChain, UINT BufferCou
 			LoaderUI::GetUI()->pContext->RSSetViewports(1, &vp);
 			return hr;
 		}
+		else
+		{
+			LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(0, 0, false, 0);
+			WaitForLastSubmittedFrame();
+			CleanupRenderTarget();
+
+			HRESULT hr = pSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
+
+			for (UINT i = 0; i < 3; i++)
+			{
+				ID3D12Resource* pBackBuffer = NULL;
+				HRESULT hr = pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
+				if (hr == S_OK)
+				{
+					LoaderUI::GetUI()->p12Device->CreateRenderTargetView(pBackBuffer, NULL, LoaderUI::GetUI()->p12RenderTargetDescriptor[i]);
+					LoaderUI::GetUI()->pRenderTarget[i] = pBackBuffer;
+					pBackBuffer->Release();
+					LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor[i], false, 0);
+					Log::Info("D3D12RenderTargetView Initialized");
+				}
+				else
+				{
+					Log::Error("Failed to initialize D3D12RenderTargetView");
+				}
+			}
+		}
 	}
 	else
 	{
@@ -428,17 +454,16 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 			Log::Error("Failed to initialize D3D12Device");
 		}
 
-		for (UINT i = 0; i < 3; i++)
+		for (UINT i = 0; i < 1; i++)
 		{
 			ID3D12Resource* pBackBuffer = NULL;
 			HRESULT hr = pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
 			if (hr == S_OK)
 			{
-				LoaderUI::GetUI()->p12Device->CreateRenderTargetView(pBackBuffer, NULL, LoaderUI::GetUI()->renderTargetDescriptorHandle);
+				LoaderUI::GetUI()->p12Device->CreateRenderTargetView(pBackBuffer, NULL, LoaderUI::GetUI()->p12RenderTargetDescriptor[i]);
 				LoaderUI::GetUI()->pRenderTarget[i] = pBackBuffer;
-			}
-			if (GetLastError() == 0)
-			{
+				
+				pBackBuffer->Release();
 				Log::Info("D3D12RenderTargetView Initialized");
 			}
 			else
@@ -714,7 +739,7 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 	DXGI_SWAP_CHAIN_DESC1 sdc;
 	{
 		ZeroMemory(&sdc, sizeof(sdc));
-		sdc.BufferCount = 3;
+		sdc.BufferCount = 1;
 		sdc.Width = 0;
 		sdc.Height = 0;
 		sdc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -753,14 +778,6 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 		{
 			Log::Error("Failed to create descriptor heap");
 			return 0;
-		}
-
-		SIZE_T rtvDescriptorSize = LoaderUI::GetUI()->p12Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = LoaderUI::GetUI()->p12DescriptorHeapRtv->GetCPUDescriptorHandleForHeapStart();
-		for (UINT i = 0; i < 3; i++)
-		{
-			LoaderUI::GetUI()->p12RenderTargetDescriptor[i] = rtvHandle;
-			rtvHandle.ptr += rtvDescriptorSize;
 		}
 	}
 
@@ -902,7 +919,7 @@ void LoaderUI::CleanupRenderTarget()
 {
 	WaitForLastSubmittedFrame();
 
-	for (UINT i = 0; i < 3; i++)
+	for (UINT i = 0; i < 1; i++)
 		if (LoaderUI::GetUI()->pRenderTarget[i]) 
 		{ 
 			LoaderUI::GetUI()->pRenderTarget[i]->Release(); 
