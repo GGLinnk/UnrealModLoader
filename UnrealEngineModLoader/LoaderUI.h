@@ -8,6 +8,11 @@
 #include <D3D12Shader.h>
 #include <D3D11Shader.h>
 #include <D3Dcompiler.h>
+#include <dxgi.h>
+#include <dxgi1_2.h>
+#include <dxgi1_3.h>
+#include <dxgi1_4.h>
+#include <dxgi1_5.h>
 #include <dxgi1_6.h>
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_internal.h"
@@ -28,6 +33,13 @@ using namespace Microsoft::WRL;
 const int NUM_FRAMES_IN_FLIGHT = 3;
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+struct FrameContext
+{
+	ID3D12CommandAllocator* CommandAllocator;
+	UINT64                  FenceValue;
+};
+
 class LOADER_API LoaderUI
 {
 public:
@@ -48,14 +60,26 @@ public:
 	ComPtr<ID3D12CommandAllocator> p12CommandAllocator = NULL;
 	ComPtr<ID3D12GraphicsCommandList> p12CommandList = NULL;
 	ComPtr<IDXGIOutput> p12Output = NULL;
-	ComPtr<ID3D12DescriptorHeap> p12DescriptorHeap = NULL;
-	ComPtr<IDXGISwapChain3> p12SwapChain = NULL;
+
+	WNDCLASSEX Hookwc;
+
+	FrameContext p12frameContext[NUM_FRAMES_IN_FLIGHT] = {};
+	HANDLE p12hSwapChainWaitableObject = NULL;
+	HANDLE p12fenceEvent = NULL;
+	UINT64 p12fenceLastSignaledValue = 0;
+	UINT p12frameIndex = 0;
+
+	ComPtr<ID3D12DescriptorHeap> p12DescriptorHeapRtv = NULL;
+	ComPtr<ID3D12DescriptorHeap> p12DescriptorHeapSrv = NULL;
+
+	ComPtr<IDXGISwapChain3> pSwapChain{};
+	D3D12_CPU_DESCRIPTOR_HANDLE p12RenderTargetDescriptor[3] = {};
 
 	ComPtr<ID3D12Fence> p12Fence = NULL;
 
 	ID3D11RenderTargetView* pRenderTargetView = NULL;
 	D3D12_CPU_DESCRIPTOR_HANDLE renderTargetDescriptorHandle;
-	ComPtr<ID3D12Resource1> pRenderTarget;
+	ComPtr<ID3D12Resource> pRenderTarget[3] = {};
 
 	WNDPROC hGameWindowProc = NULL;
 
@@ -73,6 +97,14 @@ public:
 	void LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
 
 	static LRESULT CALLBACK hookWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+	void CleanupRenderTarget();
+
+	void WaitForLastSubmittedFrame();
+
+	FrameContext* WaitForNextFrameResources();
+
+	void CleanupDeviceD3D();
 
 	void CreateUILogicThread();
 
