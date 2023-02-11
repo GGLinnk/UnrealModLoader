@@ -315,23 +315,15 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain3* pSwapChain, UINT SyncInterval
 		{
 			Log::Error("Failed to initialize D3D12Device");
 		}
-		ID3D12Resource* pBackBuffer = NULL;
-		HRESULT hr = pSwapChain->GetBuffer(1, IID_PPV_ARGS(&pBackBuffer));
-		if (hr == S_OK)
-		{
 			for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
 			{
+				ID3D12Resource* pBackBuffer = NULL;
+				pSwapChain->GetBuffer(1, IID_PPV_ARGS(&pBackBuffer));
 				LoaderUI::GetUI()->p12Device->CreateRenderTargetView(pBackBuffer, NULL, LoaderUI::GetUI()->p12RenderTargetDescriptor[i]);
 				LoaderUI::GetUI()->pRenderTarget[i] = pBackBuffer;
 				LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor[i], false, 0);
 			}
-			pBackBuffer->Release();
 			Log::Info("D3D12RenderTargetView Initialized");
-		}
-		else
-		{
-			Log::Error("Failed to initialize D3D12RenderTargetView");
-		}
 
 		ImGui::CreateContext();
 		ImGuiIO& io = ImGui::GetIO(); (void)io;
