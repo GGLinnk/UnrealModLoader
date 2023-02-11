@@ -129,7 +129,7 @@ HRESULT LoaderUI::LoaderResizeBuffers(IDXGISwapChain* pSwapChain, UINT BufferCou
 			LoaderUI::GetUI()->pContext->RSSetViewports(1, &vp);
 			return hr;
 		}
-		else
+		else if (LoaderUI::GetUI()->pRenderTarget)
 		{
 			LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(0, 0, false, 0);
 			WaitForLastSubmittedFrame();
@@ -137,16 +137,16 @@ HRESULT LoaderUI::LoaderResizeBuffers(IDXGISwapChain* pSwapChain, UINT BufferCou
 
 			HRESULT hr = pSwapChain->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
 
-			for (UINT i = 0; i < 3; i++)
+			for (UINT i = 0; i < 1; i++)
 			{
 				ID3D12Resource* pBackBuffer = NULL;
 				HRESULT hr = pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
 				if (hr == S_OK)
 				{
-					LoaderUI::GetUI()->p12Device->CreateRenderTargetView(pBackBuffer, NULL, LoaderUI::GetUI()->p12RenderTargetDescriptor[i]);
-					LoaderUI::GetUI()->pRenderTarget[i] = pBackBuffer;
+					LoaderUI::GetUI()->p12Device->CreateRenderTargetView(pBackBuffer, NULL, LoaderUI::GetUI()->p12RenderTargetDescriptor);
+					LoaderUI::GetUI()->pRenderTarget = pBackBuffer;
 					pBackBuffer->Release();
-					LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor[i], false, 0);
+					LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor, false, 0);
 					Log::Info("D3D12RenderTargetView Initialized");
 				}
 				else
@@ -453,15 +453,12 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 		{
 			Log::Error("Failed to initialize D3D12Device");
 		}
-
-		for (UINT i = 0; i < 1; i++)
-		{
 			ID3D12Resource* pBackBuffer = NULL;
-			HRESULT hr = pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
+			HRESULT hr = pSwapChain->GetBuffer(1, IID_PPV_ARGS(&pBackBuffer));
 			if (hr == S_OK)
 			{
-				LoaderUI::GetUI()->p12Device->CreateRenderTargetView(pBackBuffer, NULL, LoaderUI::GetUI()->p12RenderTargetDescriptor[i]);
-				LoaderUI::GetUI()->pRenderTarget[i] = pBackBuffer;
+				LoaderUI::GetUI()->p12Device->CreateRenderTargetView(pBackBuffer, NULL, LoaderUI::GetUI()->p12RenderTargetDescriptor);
+				LoaderUI::GetUI()->pRenderTarget = pBackBuffer;
 				
 				pBackBuffer->Release();
 				Log::Info("D3D12RenderTargetView Initialized");
@@ -470,7 +467,6 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 			{
 				Log::Error("Failed to initialize D3D12RenderTargetView");
 			}
-		}
 
 	}
 
@@ -495,11 +491,6 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 	ImGui::GetIO().MouseDrawCursor = Global::GetGlobals()->bIsMenuOpen;
-	if (Global::GetGlobals()->bIsMenuOpen)
-	{
-		DrawImGui();
-		Global::GetGlobals()->eventSystem.dispatchEvent("DrawImGui");
-	}
 
 	ImGui::Render();
 
@@ -510,7 +501,7 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 	D3D12_RESOURCE_BARRIER barrier = {};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	barrier.Transition.pResource = LoaderUI::GetUI()->pRenderTarget[backBufferIdx].Get();
+	barrier.Transition.pResource = LoaderUI::GetUI()->pRenderTarget.Get();
 	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
@@ -518,69 +509,76 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 	LoaderUI::GetUI()->p12CommandList->ResourceBarrier(1, &barrier);
 
 	// Render Dear ImGui graphics
-	ImGuiStyle* style = &ImGui::GetStyle();
-	ImVec4* colors = style->Colors;
-	colors[ImGuiCol_Text] = ImVec4(1.000f, 1.000f, 1.000f, 1.000f);
-	colors[ImGuiCol_TextDisabled] = ImVec4(0.500f, 0.500f, 0.500f, 1.000f);
-	colors[ImGuiCol_WindowBg] = ImVec4(0.180f, 0.180f, 0.180f, 1.000f);
-	colors[ImGuiCol_ChildBg] = ImVec4(0.280f, 0.280f, 0.280f, 0.000f);
-	colors[ImGuiCol_PopupBg] = ImVec4(0.313f, 0.313f, 0.313f, 1.000f);
-	colors[ImGuiCol_Border] = ImVec4(0.266f, 0.266f, 0.266f, 1.000f);
-	colors[ImGuiCol_BorderShadow] = ImVec4(0.000f, 0.000f, 0.000f, 0.000f);
-	colors[ImGuiCol_FrameBg] = ImVec4(0.160f, 0.160f, 0.160f, 1.000f);
-	colors[ImGuiCol_FrameBgHovered] = ImVec4(0.200f, 0.200f, 0.200f, 1.000f);
-	colors[ImGuiCol_FrameBgActive] = ImVec4(0.280f, 0.280f, 0.280f, 1.000f);
-	colors[ImGuiCol_TitleBg] = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
-	colors[ImGuiCol_TitleBgActive] = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
-	colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
-	colors[ImGuiCol_MenuBarBg] = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
-	colors[ImGuiCol_ScrollbarBg] = ImVec4(0.160f, 0.160f, 0.160f, 1.000f);
-	colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.277f, 0.277f, 0.277f, 1.000f);
-	colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.300f, 0.300f, 0.300f, 1.000f);
-	colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_CheckMark] = ImVec4(1.000f, 1.000f, 1.000f, 1.000f);
-	colors[ImGuiCol_SliderGrab] = ImVec4(0.391f, 0.391f, 0.391f, 1.000f);
-	colors[ImGuiCol_SliderGrabActive] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_Button] = ImVec4(1.000f, 1.000f, 1.000f, 0.000f);
-	colors[ImGuiCol_ButtonHovered] = ImVec4(1.000f, 1.000f, 1.000f, 0.156f);
-	colors[ImGuiCol_ButtonActive] = ImVec4(1.000f, 1.000f, 1.000f, 0.391f);
-	colors[ImGuiCol_Header] = ImVec4(0.313f, 0.313f, 0.313f, 1.000f);
-	colors[ImGuiCol_HeaderHovered] = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
-	colors[ImGuiCol_HeaderActive] = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
-	colors[ImGuiCol_Separator] = colors[ImGuiCol_Border];
-	colors[ImGuiCol_SeparatorHovered] = ImVec4(0.391f, 0.391f, 0.391f, 1.000f);
-	colors[ImGuiCol_SeparatorActive] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_ResizeGrip] = ImVec4(1.000f, 1.000f, 1.000f, 0.250f);
-	colors[ImGuiCol_ResizeGripHovered] = ImVec4(1.000f, 1.000f, 1.000f, 0.670f);
-	colors[ImGuiCol_ResizeGripActive] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_Tab] = ImVec4(0.098f, 0.098f, 0.098f, 1.000f);
-	colors[ImGuiCol_TabHovered] = ImVec4(0.352f, 0.352f, 0.352f, 1.000f);
-	colors[ImGuiCol_TabActive] = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
-	colors[ImGuiCol_TabUnfocused] = ImVec4(0.098f, 0.098f, 0.098f, 1.000f);
-	colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
-	colors[ImGuiCol_PlotLines] = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
-	colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_PlotHistogram] = ImVec4(0.586f, 0.586f, 0.586f, 1.000f);
-	colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_TextSelectedBg] = ImVec4(1.000f, 1.000f, 1.000f, 0.156f);
-	colors[ImGuiCol_DragDropTarget] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_NavHighlight] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
-	colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
 
-	style->ChildRounding = 4.0f;
-	style->FrameBorderSize = 1.0f;
-	style->FrameRounding = 2.0f;
-	style->GrabMinSize = 7.0f;
-	style->PopupRounding = 2.0f;
-	style->ScrollbarRounding = 12.0f;
-	style->ScrollbarSize = 13.0f;
-	style->TabBorderSize = 1.0f;
-	style->TabRounding = 0.0f;
-	style->WindowRounding = 4.0f;
+	if (Global::GetGlobals()->bIsMenuOpen)
+	{
+		ImGuiStyle* style = &ImGui::GetStyle();
+		ImVec4* colors = style->Colors;
+		colors[ImGuiCol_Text] = ImVec4(1.000f, 1.000f, 1.000f, 1.000f);
+		colors[ImGuiCol_TextDisabled] = ImVec4(0.500f, 0.500f, 0.500f, 1.000f);
+		colors[ImGuiCol_WindowBg] = ImVec4(0.180f, 0.180f, 0.180f, 1.000f);
+		colors[ImGuiCol_ChildBg] = ImVec4(0.280f, 0.280f, 0.280f, 0.000f);
+		colors[ImGuiCol_PopupBg] = ImVec4(0.313f, 0.313f, 0.313f, 1.000f);
+		colors[ImGuiCol_Border] = ImVec4(0.266f, 0.266f, 0.266f, 1.000f);
+		colors[ImGuiCol_BorderShadow] = ImVec4(0.000f, 0.000f, 0.000f, 0.000f);
+		colors[ImGuiCol_FrameBg] = ImVec4(0.160f, 0.160f, 0.160f, 1.000f);
+		colors[ImGuiCol_FrameBgHovered] = ImVec4(0.200f, 0.200f, 0.200f, 1.000f);
+		colors[ImGuiCol_FrameBgActive] = ImVec4(0.280f, 0.280f, 0.280f, 1.000f);
+		colors[ImGuiCol_TitleBg] = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
+		colors[ImGuiCol_TitleBgActive] = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
+		colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
+		colors[ImGuiCol_MenuBarBg] = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
+		colors[ImGuiCol_ScrollbarBg] = ImVec4(0.160f, 0.160f, 0.160f, 1.000f);
+		colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.277f, 0.277f, 0.277f, 1.000f);
+		colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.300f, 0.300f, 0.300f, 1.000f);
+		colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+		colors[ImGuiCol_CheckMark] = ImVec4(1.000f, 1.000f, 1.000f, 1.000f);
+		colors[ImGuiCol_SliderGrab] = ImVec4(0.391f, 0.391f, 0.391f, 1.000f);
+		colors[ImGuiCol_SliderGrabActive] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+		colors[ImGuiCol_Button] = ImVec4(1.000f, 1.000f, 1.000f, 0.000f);
+		colors[ImGuiCol_ButtonHovered] = ImVec4(1.000f, 1.000f, 1.000f, 0.156f);
+		colors[ImGuiCol_ButtonActive] = ImVec4(1.000f, 1.000f, 1.000f, 0.391f);
+		colors[ImGuiCol_Header] = ImVec4(0.313f, 0.313f, 0.313f, 1.000f);
+		colors[ImGuiCol_HeaderHovered] = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
+		colors[ImGuiCol_HeaderActive] = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
+		colors[ImGuiCol_Separator] = colors[ImGuiCol_Border];
+		colors[ImGuiCol_SeparatorHovered] = ImVec4(0.391f, 0.391f, 0.391f, 1.000f);
+		colors[ImGuiCol_SeparatorActive] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+		colors[ImGuiCol_ResizeGrip] = ImVec4(1.000f, 1.000f, 1.000f, 0.250f);
+		colors[ImGuiCol_ResizeGripHovered] = ImVec4(1.000f, 1.000f, 1.000f, 0.670f);
+		colors[ImGuiCol_ResizeGripActive] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+		colors[ImGuiCol_Tab] = ImVec4(0.098f, 0.098f, 0.098f, 1.000f);
+		colors[ImGuiCol_TabHovered] = ImVec4(0.352f, 0.352f, 0.352f, 1.000f);
+		colors[ImGuiCol_TabActive] = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
+		colors[ImGuiCol_TabUnfocused] = ImVec4(0.098f, 0.098f, 0.098f, 1.000f);
+		colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
+		colors[ImGuiCol_PlotLines] = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
+		colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+		colors[ImGuiCol_PlotHistogram] = ImVec4(0.586f, 0.586f, 0.586f, 1.000f);
+		colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+		colors[ImGuiCol_TextSelectedBg] = ImVec4(1.000f, 1.000f, 1.000f, 0.156f);
+		colors[ImGuiCol_DragDropTarget] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+		colors[ImGuiCol_NavHighlight] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+		colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+		colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
+		colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
 
-	LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor[backBufferIdx], FALSE, NULL);
+		style->ChildRounding = 4.0f;
+		style->FrameBorderSize = 1.0f;
+		style->FrameRounding = 2.0f;
+		style->GrabMinSize = 7.0f;
+		style->PopupRounding = 2.0f;
+		style->ScrollbarRounding = 12.0f;
+		style->ScrollbarSize = 13.0f;
+		style->TabBorderSize = 1.0f;
+		style->TabRounding = 0.0f;
+		style->WindowRounding = 4.0f;
+
+		DrawImGui();
+		Global::GetGlobals()->eventSystem.dispatchEvent("DrawImGui");
+	}
+
+	LoaderUI::GetUI()->p12CommandList->OMSetRenderTargets(1, &LoaderUI::GetUI()->p12RenderTargetDescriptor, FALSE, NULL);
 	LoaderUI::GetUI()->p12CommandList->SetDescriptorHeaps(1, &LoaderUI::GetUI()->p12DescriptorHeapSrv);
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), LoaderUI::GetUI()->p12CommandList.Get());
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
@@ -590,20 +588,12 @@ void LoaderUI::LoaderD3D12Present(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 
 	LoaderUI::GetUI()->p12CommandQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)LoaderUI::GetUI()->p12CommandList.Get());
 
-	LoaderUI::GetUI()->pSwapChain->Present(1, 0);
+	LoaderUI::GetUI()->pSwapChain->Present(0, 0);
 	
 	UINT64 fenceValue = LoaderUI::GetUI()->p12fenceLastSignaledValue;
 	LoaderUI::GetUI()->p12CommandQueue->Signal(LoaderUI::GetUI()->p12Fence.Get(), fenceValue);
 	LoaderUI::GetUI()->p12fenceLastSignaledValue++;
 	frameCtx->FenceValue = fenceValue;
-
-	ImGui_ImplDX11_Shutdown();
-	ImGui_ImplWin32_Shutdown();
-	ImGui::DestroyContext();
-
-	CleanupDeviceD3D();
-	::DestroyWindow(hGameWindow);
-	::UnregisterClass(LoaderUI::GetUI()->Hookwc.lpszClassName, LoaderUI::GetUI()->Hookwc.hInstance);
 }
 
 HRESULT(*D3D11Present)(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
@@ -640,10 +630,10 @@ DWORD __stdcall InitDX11Hook(LPVOID)
 
 	IDXGISwapChain* pSwapChain;
 
-	LoaderUI::GetUI()->Hookwc = {sizeof(WNDCLASSEX), CS_CLASSDC, DefWindowProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, L"DX", NULL};
-	RegisterClassEx(&LoaderUI::GetUI()->Hookwc);
+	WNDCLASSEXA wc = { sizeof(WNDCLASSEX), CS_CLASSDC, DefWindowProc, 0L, 0L, GetModuleHandleA(NULL), NULL, NULL, NULL, NULL, "DX", NULL };
+	RegisterClassExA(&wc);
 
-	HWND hWnd = CreateWindowA("DX", NULL, WS_OVERLAPPEDWINDOW, 100, 100, 300, 300, NULL, NULL, LoaderUI::GetUI()->Hookwc.hInstance, NULL);
+	HWND hWnd = CreateWindowA("DX", NULL, WS_OVERLAPPEDWINDOW, 100, 100, 300, 300, NULL, NULL, wc.hInstance, NULL);
 
 	D3D_FEATURE_LEVEL requestedLevels[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1 };
 	D3D_FEATURE_LEVEL obtainedLevel;
@@ -770,7 +760,7 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		desc.NumDescriptors = 3;
+		desc.NumDescriptors = 1;
 		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		desc.NodeMask = 1;
 
@@ -804,17 +794,13 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 			return 0;
 		}
 	}
-
-	for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
-	{
-		if (LoaderUI::GetUI()->p12Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&LoaderUI::GetUI()->p12frameContext[i].CommandAllocator)) != S_OK)
+		if (LoaderUI::GetUI()->p12Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&LoaderUI::GetUI()->p12frameContext.CommandAllocator)) != S_OK)
 		{
 			Log::Error("Failed to create command allocator");
 			return 0;
 		}
-	}
 
-	if (LoaderUI::GetUI()->p12Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, LoaderUI::GetUI()->p12frameContext[0].CommandAllocator, NULL, IID_PPV_ARGS(&LoaderUI::GetUI()->p12CommandList)) != S_OK ||
+	if (LoaderUI::GetUI()->p12Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, LoaderUI::GetUI()->p12frameContext.CommandAllocator, NULL, IID_PPV_ARGS(&LoaderUI::GetUI()->p12CommandList)) != S_OK ||
 		LoaderUI::GetUI()->p12CommandList->Close() != S_OK)
 	{
 		Log::Error("Failed to create command list");
@@ -853,26 +839,31 @@ DWORD __stdcall InitDX12Hook(LPVOID)
 			Log::Error("Failed to query swap chain");
 			return 0;
 		}
-		swapChain1->Release();
-		dxgiFactory->Release();
+
 		LoaderUI::GetUI()->pSwapChain->SetMaximumFrameLatency(3);
 		LoaderUI::GetUI()->p12hSwapChainWaitableObject = LoaderUI::GetUI()->pSwapChain->GetFrameLatencyWaitableObject();
-	}
 
-	LoaderUI::GetUI()->pSwapChainVtable = (DWORD_PTR*)LoaderUI::GetUI()->pSwapChain.Get();
-	LoaderUI::GetUI()->pSwapChainVtable = (DWORD_PTR*)LoaderUI::GetUI()->pSwapChainVtable[0];
-	LoaderUI::GetUI()->phookD3D12Present = (LoaderUI::D3D12PresentHook)LoaderUI::GetUI()->pSwapChainVtable[8];
-	MinHook::Add((DWORD64)LoaderUI::GetUI()->pSwapChainVtable[13], &hookResizeBuffers, &LoaderUI::GetUI()->ResizeBuffers, "DX12-ResizeBuffers");
-	MinHook::Add((DWORD64)LoaderUI::GetUI()->phookD3D12Present, &hookD3D12Present, &D3D12Present, "DX12-Present");
+		LoaderUI::GetUI()->pSwapChainVtable = (DWORD_PTR*)LoaderUI::GetUI()->pSwapChain.Get();
+		LoaderUI::GetUI()->pSwapChainVtable = (DWORD_PTR*)LoaderUI::GetUI()->pSwapChainVtable[0];
+		LoaderUI::GetUI()->phookD3D12Present = (LoaderUI::D3D12PresentHook)LoaderUI::GetUI()->pSwapChainVtable[8];
+		MinHook::Add((DWORD64)LoaderUI::GetUI()->pSwapChainVtable[13], &hookResizeBuffers, &LoaderUI::GetUI()->ResizeBuffers, "DX12-ResizeBuffers");
+		MinHook::Add((DWORD64)LoaderUI::GetUI()->phookD3D12Present, &hookD3D12Present, &D3D12Present, "DX12-Present");
 
-	DWORD dPresentwOld;
-	DWORD dResizeOld;
-	VirtualProtect(LoaderUI::GetUI()->phookD3D12Present, 2, PAGE_EXECUTE_READWRITE, &dPresentwOld);
-	VirtualProtect((LPVOID)LoaderUI::GetUI()->pSwapChainVtable[13], 2, PAGE_EXECUTE_READWRITE, &dResizeOld);
+		DWORD dPresentwOld;
+		DWORD dResizeOld;
+		VirtualProtect(LoaderUI::GetUI()->phookD3D12Present, 2, PAGE_EXECUTE_READWRITE, &dPresentwOld);
+		VirtualProtect((LPVOID)LoaderUI::GetUI()->pSwapChainVtable[13], 2, PAGE_EXECUTE_READWRITE, &dResizeOld);
 
-	while (true)
-	{
-		Sleep(10);
+		while (true)
+		{
+			Sleep(10);
+		}
+
+		swapChain1->Release();
+		dxgiFactory->Release();
+		LoaderUI::GetUI()->p12Device->Release();
+		LoaderUI::GetUI()->p12CommandList->Release();
+
 	}
 
 	Log::Error("Tamère4");
@@ -884,11 +875,10 @@ void LoaderUI::CleanupDeviceD3D()
 	CleanupRenderTarget();
 	if (LoaderUI::GetUI()->pSwapChain) { LoaderUI::GetUI()->pSwapChain->SetFullscreenState(false, nullptr); LoaderUI::GetUI()->pSwapChain->Release(); LoaderUI::GetUI()->pSwapChain = nullptr; }
 	if (LoaderUI::GetUI()->p12hSwapChainWaitableObject != nullptr) { CloseHandle(LoaderUI::GetUI()->p12hSwapChainWaitableObject); }
-	for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
-		if (LoaderUI::GetUI()->p12frameContext[i].CommandAllocator) 
+		if (LoaderUI::GetUI()->p12frameContext.CommandAllocator) 
 		{ 
-			LoaderUI::GetUI()->p12frameContext[i].CommandAllocator->Release(); 
-			LoaderUI::GetUI()->p12frameContext[i].CommandAllocator = nullptr;
+			LoaderUI::GetUI()->p12frameContext.CommandAllocator->Release(); 
+			LoaderUI::GetUI()->p12frameContext.CommandAllocator = nullptr;
 		}
 	if (LoaderUI::GetUI()->p12CommandQueue) { LoaderUI::GetUI()->p12CommandQueue->Release(); LoaderUI::GetUI()->p12CommandQueue = nullptr; }
 	if (LoaderUI::GetUI()->p12CommandList) { LoaderUI::GetUI()->p12CommandList->Release(); LoaderUI::GetUI()->p12CommandList = nullptr; }
@@ -920,16 +910,16 @@ void LoaderUI::CleanupRenderTarget()
 	WaitForLastSubmittedFrame();
 
 	for (UINT i = 0; i < 1; i++)
-		if (LoaderUI::GetUI()->pRenderTarget[i]) 
+		if (LoaderUI::GetUI()->pRenderTarget) 
 		{ 
-			LoaderUI::GetUI()->pRenderTarget[i]->Release(); 
-			LoaderUI::GetUI()->pRenderTarget[i] = nullptr;
+			LoaderUI::GetUI()->pRenderTarget->Release(); 
+			LoaderUI::GetUI()->pRenderTarget = nullptr;
 		}
 }
 
 void LoaderUI::WaitForLastSubmittedFrame()
 {
-	FrameContext* frameCtx = &LoaderUI::GetUI()->p12frameContext[LoaderUI::GetUI()->p12frameIndex % NUM_FRAMES_IN_FLIGHT];
+	FrameContext* frameCtx = &LoaderUI::GetUI()->p12frameContext;
 
 	UINT64 fenceValue = frameCtx->FenceValue;
 	if (fenceValue == 0)
@@ -951,7 +941,7 @@ FrameContext* LoaderUI::WaitForNextFrameResources()
 	HANDLE waitableObjects[] = { LoaderUI::GetUI()->p12hSwapChainWaitableObject, NULL };
 	DWORD numWaitableObjects = 1;
 
-	FrameContext* frameCtx = &LoaderUI::GetUI()->p12frameContext[nextFrameIndex % NUM_FRAMES_IN_FLIGHT];
+	FrameContext* frameCtx = &LoaderUI::GetUI()->p12frameContext;
 	UINT64 fenceValue = frameCtx->FenceValue;
 	if (fenceValue != 0) // means no fence was signaled
 	{

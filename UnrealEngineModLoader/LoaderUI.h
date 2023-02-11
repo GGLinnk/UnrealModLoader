@@ -30,8 +30,6 @@
 
 using namespace Microsoft::WRL;
 
-const int NUM_FRAMES_IN_FLIGHT = 3;
-
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 struct FrameContext
@@ -63,7 +61,7 @@ public:
 
 	WNDCLASSEX Hookwc;
 
-	FrameContext p12frameContext[NUM_FRAMES_IN_FLIGHT] = {};
+	FrameContext p12frameContext;
 	HANDLE p12hSwapChainWaitableObject = NULL;
 	HANDLE p12fenceEvent = NULL;
 	UINT64 p12fenceLastSignaledValue = 0;
@@ -72,13 +70,13 @@ public:
 	ComPtr<ID3D12DescriptorHeap> p12DescriptorHeapRtv = NULL;
 	ComPtr<ID3D12DescriptorHeap> p12DescriptorHeapSrv = NULL;
 
-	ComPtr<IDXGISwapChain3> pSwapChain{};
-	D3D12_CPU_DESCRIPTOR_HANDLE p12RenderTargetDescriptor[1] = {};
+	ComPtr<IDXGISwapChain3> pSwapChain;
+	D3D12_CPU_DESCRIPTOR_HANDLE p12RenderTargetDescriptor;
 
 	ComPtr<ID3D12Fence> p12Fence = NULL;
 
 	ID3D11RenderTargetView* pRenderTargetView = NULL;
-	ComPtr<ID3D12Resource> pRenderTarget[3] = {};
+	ComPtr<ID3D12Resource> pRenderTarget;
 
 	WNDPROC hGameWindowProc = NULL;
 
