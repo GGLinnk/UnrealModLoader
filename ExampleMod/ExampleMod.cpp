@@ -1,5 +1,5 @@
 #include "ExampleMod.h"
-#include "Utilities/MinHook.h"
+#include "../Utilities/MinHook.h"
 
 BPFUNCTION(WriteToFile)
 {

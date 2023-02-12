@@ -1,7 +1,6 @@
 #pragma once
 
-//Easy To Manage, keeping it in one place.
-#define MODLOADER_VERSION "2.2.1"
+#include "Version.h"
 
 #ifdef UNREALENGINEMODLOADER_EXPORTS
 #define LOADER_API __declspec(dllexport)

@@ -1,10 +1,10 @@
 #pragma once
 #include <Windows.h>
 #include <Psapi.h>
-#include "Utilities/EngineDefFinder.h"
-#include "Basic.hpp"
-#include "Utilities//Pattern.h"
-#include "CoreUObject_classes.hpp"
+#include "../Utilities/EngineDefFinder.h"
+#include "Basic/Basic.hpp"
+#include "../Utilities/Pattern.h"
+#include "CoreUObject/CoreUObject_classes.hpp"
 namespace UE4
 {
 	static void InitSDK()

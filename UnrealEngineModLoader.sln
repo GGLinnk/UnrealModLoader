@@ -1,0 +1,55 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExampleMod", "ExampleMod\ExampleMod.vcxproj", "{A1BBEE5E-6F8A-46A1-A489-75AA621E1B5A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LoaderAutoInjector", "LoaderAutoInjector\LoaderAutoInjector.vcxproj", "{ACD937DA-925A-4640-9AD0-39A381D323EA}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UniversalHookX", "UniversalHookX\UniversalHookX\UniversalHookX.vcxproj", "{3E2248F5-1C63-4DEE-A8AE-76830819E4A4}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnrealEngineModLauncher", "UnrealEngineModLauncher\UnrealEngineModLauncher.vcxproj", "{5BF2489F-778A-4781-8666-853F6685931E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{ACD937DA-925A-4640-9AD0-39A381D323EA} = {ACD937DA-925A-4640-9AD0-39A381D323EA}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnrealEngineModLoader", "UnrealEngineModLoader\UnrealEngineModLoader.vcxproj", "{96A3ECC2-6BA5-4F30-B36B-71F5F9476F41}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3E2248F5-1C63-4DEE-A8AE-76830819E4A4} = {3E2248F5-1C63-4DEE-A8AE-76830819E4A4}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A1BBEE5E-6F8A-46A1-A489-75AA621E1B5A}.Debug|x64.ActiveCfg = Debug|x64
+		{A1BBEE5E-6F8A-46A1-A489-75AA621E1B5A}.Debug|x64.Build.0 = Debug|x64
+		{A1BBEE5E-6F8A-46A1-A489-75AA621E1B5A}.Release|x64.ActiveCfg = Release|x64
+		{A1BBEE5E-6F8A-46A1-A489-75AA621E1B5A}.Release|x64.Build.0 = Release|x64
+		{ACD937DA-925A-4640-9AD0-39A381D323EA}.Debug|x64.ActiveCfg = Release|x64
+		{ACD937DA-925A-4640-9AD0-39A381D323EA}.Debug|x64.Build.0 = Release|x64
+		{ACD937DA-925A-4640-9AD0-39A381D323EA}.Release|x64.ActiveCfg = Release|x64
+		{ACD937DA-925A-4640-9AD0-39A381D323EA}.Release|x64.Build.0 = Release|x64
+		{3E2248F5-1C63-4DEE-A8AE-76830819E4A4}.Debug|x64.ActiveCfg = Debug|x64
+		{3E2248F5-1C63-4DEE-A8AE-76830819E4A4}.Debug|x64.Build.0 = Debug|x64
+		{3E2248F5-1C63-4DEE-A8AE-76830819E4A4}.Release|x64.ActiveCfg = Release|x64
+		{3E2248F5-1C63-4DEE-A8AE-76830819E4A4}.Release|x64.Build.0 = Release|x64
+		{5BF2489F-778A-4781-8666-853F6685931E}.Debug|x64.ActiveCfg = Debug|x64
+		{5BF2489F-778A-4781-8666-853F6685931E}.Debug|x64.Build.0 = Debug|x64
+		{5BF2489F-778A-4781-8666-853F6685931E}.Release|x64.ActiveCfg = Release|x64
+		{5BF2489F-778A-4781-8666-853F6685931E}.Release|x64.Build.0 = Release|x64
+		{96A3ECC2-6BA5-4F30-B36B-71F5F9476F41}.Debug|x64.ActiveCfg = Debug|x64
+		{96A3ECC2-6BA5-4F30-B36B-71F5F9476F41}.Debug|x64.Build.0 = Debug|x64
+		{96A3ECC2-6BA5-4F30-B36B-71F5F9476F41}.Release|x64.ActiveCfg = Release|x64
+		{96A3ECC2-6BA5-4F30-B36B-71F5F9476F41}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FFEC6BB7-08CA-4C3B-AA57-249DDDE66CF6}
+	EndGlobalSection
+EndGlobal
